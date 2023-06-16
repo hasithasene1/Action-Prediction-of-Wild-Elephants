@@ -12,7 +12,7 @@ def publisher():
     
     rate = rospy.Rate(30)
 
-    video_path = 'Ele2.mp4'  
+    video_path = '../data/Vid1.mp4'  
     cap = cv2.VideoCapture(video_path)
 
     bridge = CvBridge()
