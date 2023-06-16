@@ -31,7 +31,7 @@ class ActionPrediction:
         rospy.init_node('Action_Prediction_node')
 
 
-        self.model = self.load_model('ElephantBest.pt')
+        self.model = self.load_model('AggBest.pt')
         self.classes = self.model.names
         self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
         print("\n\nDevice Used:", self.device)
