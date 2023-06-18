@@ -8,7 +8,7 @@ class VideoToFrames:
         self.video_name = video_name
         
 
-    def to_frames(self,length_min,length_sec,FPS):
+    def to_frames(self,length_min,length_sec):
 
         now = datetime.now()
 
@@ -29,5 +29,5 @@ class VideoToFrames:
             print(f'{self.crop_dir}/frame_{i}.png :{done}')
 
 
-Vid = VideoToFrames('vid.mp4')
-Vid.to_frames(0,2,FPS=30)
+Vid = VideoToFrames('vid.mp4') #Video Name
+Vid.to_frames(length_min=0,length_sec=2) #Length of the video Minitues and Seconds 
