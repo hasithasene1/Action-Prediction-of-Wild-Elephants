@@ -20,8 +20,6 @@ class CroppedImageViewer:
         frame = self.cv_bridge.imgmsg_to_cv2(image, desired_encoding='passthrough')
 
         # Display the received image
-
-
         cv2.imshow('Cropped Image Viewer', frame)
         rospy.logwarn("Viewed")
         cv2.waitKey(1)
@@ -31,7 +29,7 @@ class ActionPrediction:
         rospy.init_node('Action_Prediction_node')
 
 
-        self.model = self.load_model('AggBest.pt')
+        self.model = self.load_model('weights/Agg_lastJun20.pt')
         self.classes = self.model.names
         self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
         print("\n\nDevice Used:", self.device)
