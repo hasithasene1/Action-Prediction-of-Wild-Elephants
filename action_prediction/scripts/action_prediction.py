@@ -29,7 +29,7 @@ class ActionPrediction:
         rospy.init_node('Action_Prediction_node')
 
 
-        self.model = self.load_model('weights/Agg_lastJun20.pt')
+        self.model = self.load_model('weights/best_Jun20.pt')
         self.classes = self.model.names
         self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
         print("\n\nDevice Used:", self.device)
@@ -73,11 +73,15 @@ class ActionPrediction:
         for i in range(n):
             row = cord[i]
             rospy.logwarn(f"{row}")
-            if row[4] >= 0.01:
+            file_path = "output.txt"  
+            file = open(file_path, "a")
+            file.write(f"{row}\n")
+            file.close()
+            if row[4] >= 0.3:
                 x1, y1, x2, y2 = int(row[0] * x_shape), int(row[1] * y_shape), int(row[2] * x_shape), int(row[3] * y_shape)
                 bgr = (0, 255, 0)
                 cv2.rectangle(frame, (x1, y1), (x2, y2), bgr, 2)
-                cv2.putText(frame, self.class_to_label(labels[i]), (x1, y1), cv2.FONT_HERSHEY_SIMPLEX, 0.9, bgr)
+                cv2.putText(frame, f"{torch.round(row[4]*100)} {self.class_to_label(labels[i])}", (x1, y1), cv2.FONT_HERSHEY_SIMPLEX, 0.9, bgr)
 
                 # Crop the rectangle
                 cropped_frame = frame[y1:y2, x1:x2]
