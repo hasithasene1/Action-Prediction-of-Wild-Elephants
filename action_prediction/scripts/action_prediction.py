@@ -8,6 +8,7 @@ from cv_bridge import CvBridge
 from time import time
 import numpy as np
 import torch
+from collections import deque
 
 class CroppedImageViewer:
 
@@ -23,13 +24,20 @@ class CroppedImageViewer:
         cv2.imshow('Cropped Image Viewer', frame)
         rospy.logwarn("Viewed")
         cv2.waitKey(1)
+
 class ActionPrediction:
+
+    tail = deque(maxlen=150)
+    agg_tail = deque()
+
+    ear = deque(maxlen=150)
+    agg_ear = deque()
 
     def __init__(self):
         rospy.init_node('Action_Prediction_node')
 
 
-        self.model = self.load_model('weights/best_Jun20.pt')
+        self.model = self.load_model('weights/lastJul07.pt')
         self.classes = self.model.names
         self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
         print("\n\nDevice Used:", self.device)
@@ -77,7 +85,9 @@ class ActionPrediction:
             file = open(file_path, "a")
             file.write(f"{row}\n")
             file.close()
-            if row[4] >= 0.3:
+
+            self.alert_algorithm(self.class_to_label(labels[i]),row[4])
+            if row[4] >= 0.4:
                 x1, y1, x2, y2 = int(row[0] * x_shape), int(row[1] * y_shape), int(row[2] * x_shape), int(row[3] * y_shape)
                 bgr = (0, 255, 0)
                 cv2.rectangle(frame, (x1, y1), (x2, y2), bgr, 2)
@@ -96,6 +106,46 @@ class ActionPrediction:
                 self.image_pub.publish(cropped_image_msg)
 
         return frame
+    
+    def alert_algorithm(self,label,probability):
+        seconds = 5
+        fps = 30
+        tail_probability = 0.5
+        ear_probability = 0.5
+
+        if(label == 'Aggressive_tail' and probability >= 0.5):
+            self.tail.append(1)            
+
+        elif(label == 'Aggressive_tail' and probability < 0.5):
+            self.tail.append(0)               
+
+        if(self.tail.count(1)>=seconds*fps*tail_probability):
+            self.agg_tail.append(1)
+        else:
+            self.agg_tail.append(0)
+
+
+        if(label =='Aggressive_ear' and probability >= 0.5):
+            self.ear.append(1)
+        elif(label =='Aggressive_ear' and probability < 0.5):
+            self.ear.append(0)
+
+        if(self.ear.count(1)>=seconds*fps*ear_probability):
+            self.agg_ear.append(1)
+        else:
+            self.agg_ear.append(0)
+        
+        
+        rospy.logwarn(self.tail)
+
+        if(self.agg_ear[-1] == 1 and self.agg_tail[-1]==1):
+            rospy.logwarn("badu hari" )
+            
+                
+        
+
+
+
     
     def image_callback(self, image):
         frame = self.cv_bridge.imgmsg_to_cv2(image, desired_encoding='passthrough')
