@@ -9,10 +9,10 @@ class IPCamNode:
     def __init__(self):
         rospy.init_node('ip_cam_node')
         self.bridge = CvBridge()
-        self.image_pub = rospy.Publisher('image_topic', Image, queue_size=10)
+        self.image_pub = rospy.Publisher('normal_stream1', Image, queue_size=10)
 
     def start(self):
-        cam_url = "http://192.168.8.105:4747/video"  # Replace with the URL of your IP camera stream
+        cam_url = "http://192.168.1.6:4747/video"  # Replace with the URL of your IP camera stream
         cap = cv2.VideoCapture(cam_url)
 
         while not rospy.is_shutdown():

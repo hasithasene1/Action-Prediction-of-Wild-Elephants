@@ -9,7 +9,15 @@ from time import time
 import numpy as np
 import torch
 from collections import deque
+import subprocess
+class AlertDialog:
+    def show_alert_dialog(title, message):
+        try:
+            subprocess.run(['zenity', '--title', title, '--info', '--text', message])
+        except FileNotFoundError:
+            print("zenity command not found. Make sure you have zenity installed.")
 
+    
 class CroppedImageViewer:
 
     def __init__(self):
@@ -28,10 +36,10 @@ class CroppedImageViewer:
 class ActionPrediction:
 
     tail = deque(maxlen=150)
-    agg_tail = deque()
+    agg_tail = deque(maxlen=200)
 
     ear = deque(maxlen=150)
-    agg_ear = deque()
+    agg_ear = deque(maxlen=200)
 
     def __init__(self):
         rospy.init_node('Action_Prediction_node')
@@ -78,6 +86,8 @@ class ActionPrediction:
 
         x_shape, y_shape = frame.shape[1], frame.shape[0]
 
+        self.alert_algorithm(results,frame)
+
         for i in range(n):
             row = cord[i]
             rospy.logwarn(f"{row}")
@@ -85,8 +95,7 @@ class ActionPrediction:
             file = open(file_path, "a")
             file.write(f"{row}\n")
             file.close()
-
-            self.alert_algorithm(self.class_to_label(labels[i]),row[4])
+            
             if row[4] >= 0.4:
                 x1, y1, x2, y2 = int(row[0] * x_shape), int(row[1] * y_shape), int(row[2] * x_shape), int(row[3] * y_shape)
                 bgr = (0, 255, 0)
@@ -99,7 +108,7 @@ class ActionPrediction:
                 # Save the cropped frame
                 file_name = f"croped/Action{int(rospy.Time.now().to_sec())} .jpg"            
                 result_image = cv2.imwrite(file_name, cropped_frame)
-                rospy.logwarn(f"ImageAction{file_name} :{result_image}" )
+                #rospy.logwarn(f"ImageAction{file_name} :{result_image}")
 
                 # Publish the cropped frame
                 cropped_image_msg = self.cv_bridge.cv2_to_imgmsg(cropped_frame)
@@ -107,42 +116,63 @@ class ActionPrediction:
 
         return frame
     
-    def alert_algorithm(self,label,probability):
+    def alert_algorithm(self,results,frame):
+
+        labels, cord = results
+        n = len(labels)
         seconds = 5
         fps = 30
         tail_probability = 0.5
-        ear_probability = 0.5
+        ear_probability = 0.3
 
-        if(label == 'Aggressive_tail' and probability >= 0.5):
-            self.tail.append(1)            
+        for i in range(n):       
+            label = self.class_to_label(labels[i])
+            row = cord[i]
+            probability = row[4]
+            if(label == 'Aggressive_tail' and probability >= 0.4):
+                self.tail.append(1)            
 
-        elif(label == 'Aggressive_tail' and probability < 0.5):
-            self.tail.append(0)               
+            elif(label == 'Aggressive_tail' and probability < 0.4):
+                self.tail.append(0)               
 
-        if(self.tail.count(1)>=seconds*fps*tail_probability):
-            self.agg_tail.append(1)
-        else:
-            self.agg_tail.append(0)
+            if(self.tail.count(1)>=seconds*fps*tail_probability):
+                self.agg_tail.append(1)
+            else:
+                self.agg_tail.append(0)
 
 
-        if(label =='Aggressive_ear' and probability >= 0.5):
-            self.ear.append(1)
-        elif(label =='Aggressive_ear' and probability < 0.5):
-            self.ear.append(0)
+            if(label =='Aggressive_ear' and probability >= 0.3):
+                self.ear.append(1)
+            elif(label =='Aggressive_ear' and probability < 0.3):
+                self.ear.append(0)
 
-        if(self.ear.count(1)>=seconds*fps*ear_probability):
-            self.agg_ear.append(1)
-        else:
-            self.agg_ear.append(0)
-        
-        
-        rospy.logwarn(self.tail)
+            if(self.ear.count(1)>=seconds*fps*ear_probability):
+                self.agg_ear.append(1)
+            else:
+                self.agg_ear.append(0)
 
-        if(self.agg_ear[-1] == 1 and self.agg_tail[-1]==1):
-            rospy.logwarn("badu hari" )
+            #if(n==2):
+            rospy.logwarn(self.tail.count(1))
+            rospy.logwarn(self.ear.count(1))
+                    
+            if(self.agg_ear.count(1)>25 and self.agg_tail.count(1)>75):
+                rospy.logwarn("Aggressive Elephant Detected")
+                file_name = f"Action{int(rospy.Time.now().to_sec())}.jpg"            
+                path = '/home/hasitha/catkin_ws/src/action_prediction/scripts/Aggressive'
+                result_image = cv2.imwrite(os.path.join(path,file_name), frame)              
+                rospy.logwarn(f"ImageAction{file_name} :{result_image}")
+                # Usage example
+                alert_title = "Alert"
+                alert_message = "Aggressive Elephant Detected and image have been saved to folder."
+                AlertDialog.show_alert_dialog(alert_title, alert_message)
+
+
+            if(self.agg_ear.count(1)>50):
+                rospy.logwarn("badu hari - Ear")
+            if(self.agg_tail.count(1)>100):
+                rospy.logwarn("Badu hari - Aggressive Tail")
+
             
-                
-        
 
 
 
